@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simple Trap System</title>
+<style>
+  :root {
+    --parch: #f4ead2;
+    --parch-dark: #e6d6ae;
+    --ink: #2b1d14;
+    --red: #7a1f12;
+    --gold: #b58a2e;
+    --green: #2f6b3a;
+    --muted: #6b5a48;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    background: #3a2a1e radial-gradient(circle at 50% 0%, #5a4330 0%, #2a1d14 70%) fixed;
+    min-height: 100vh;
+    padding: 24px 12px 48px;
+  }
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    background: var(--parch);
+    border: 3px solid var(--gold);
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    padding: 28px 32px 32px;
+  }
+  h1 {
+    font-variant: small-caps;
+    color: var(--red);
+    margin: 0 0 4px;
+    font-size: 2rem;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 6px;
+  }
+  .byline { color: var(--muted); font-size: .9rem; margin: 0 0 20px; }
+  h2 { font-variant: small-caps; color: var(--red); margin: 0 0 10px; font-size: 1.35rem; }
+  h3 { font-variant: small-caps; color: var(--red); margin: 18px 0 6px; font-size: 1.1rem; }
+
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
+  button.click {
+    font-family: inherit; font-size: 1.6rem; font-weight: bold; letter-spacing: 2px;
+    color: var(--parch); background: var(--red);
+    border: 2px solid var(--gold); border-radius: 6px;
+    padding: 12px 32px; cursor: pointer;
+    box-shadow: 0 4px 0 #4a120a;
+  }
+  button.click:active { transform: translateY(3px); box-shadow: 0 1px 0 #4a120a; }
+  select {
+    font-family: inherit; font-size: 1rem; padding: 8px 10px;
+    border: 1px solid var(--gold); border-radius: 4px; background: #fffaf0; color: var(--ink);
+  }
+
+  .card {
+    background: #fffaf0; border: 2px solid var(--gold); border-radius: 6px;
+    padding: 20px 22px; margin-bottom: 22px;
+  }
+  .hidden { display: none; }
+  .trap-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  .trap-name { font-size: 2rem; font-variant: small-caps; color: var(--red); margin: 0; }
+  .roll-tag { color: var(--muted); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 14px 0; }
+  .stat { background: var(--parch); border: 1px solid var(--parch-dark); border-radius: 4px; padding: 10px 12px; }
+  .stat .label { font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .stat .value { font-size: 1.25rem; font-weight: bold; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--parch-dark); vertical-align: top; }
+  th { font-variant: small-caps; color: var(--red); }
+  tr.highlight td { background: #f3e3b8; font-weight: bold; }
+
+  .adv { color: var(--green); font-weight: bold; }
+  .dis { color: var(--red); font-weight: bold; }
+  .norm { color: var(--muted); font-weight: bold; }
+
+  .condition { background: #f6e1db; border-left: 4px solid var(--red); padding: 10px 14px; border-radius: 0 4px 4px 0; }
+  .condition strong { color: var(--red); }
+
+  .gaps { background: #efe8d8; border: 1px dashed var(--muted); border-radius: 4px; padding: 10px 14px; font-size: .95rem; }
+  .gaps ul { margin: 6px 0 0; padding-left: 20px; }
+
+  ol.steps { padding-left: 22px; margin: 6px 0; }
+  ol.steps li { margin-bottom: 6px; }
+
+  .note { font-size: .85rem; color: var(--muted); }
+  footer { margin-top: 26px; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--parch-dark); padding-top: 10px; }
+  @media (max-width: 560px) { .page { padding: 18px 16px; } h1 { font-size: 1.5rem; } .trap-name { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Simple Trap System</h1>
+  <p class="byline">A roller for ThinkDM's Simple Trap System (homebrew). Used at a D&amp;D 5.5e (2024) table.</p>
+
+  <div class="controls">
+    <button class="click" id="clickBtn" type="button">CLICK!</button>
+    <select id="pick" aria-label="Choose a specific trap">
+      <option value="">Or choose a trap (1d8)...</option>
+    </select>
+  </div>
+
+  <div id="result" class="card hidden" aria-live="polite">
+    <div class="trap-head">
+      <h2 class="trap-name" id="trapName"></h2>
+      <span class="roll-tag" id="rollTag"></span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Saving Throw</div><div class="value" id="trapSave"></div></div>
+      <div class="stat"><div class="label">Damage Type</div><div class="value" id="trapDamage"></div></div>
+      <div class="stat"><div class="label">Good Reaction (Advantage)</div><div class="value" id="trapGood"></div></div>
+      <div class="stat"><div class="label">Bad Reaction (Disadvantage)</div><div class="value" id="trapBad"></div></div>
+    </div>
+
+    <h3>What the party has to do</h3>
+    <ol class="steps">
+      <li>Say <strong>"CLICK!"</strong> Don't name the trap yet.</li>
+      <li>Each player picks a reaction: <strong>Brace</strong>, <strong>Jump</strong>, or <strong>Prone</strong>.</li>
+      <li>Reveal the trap: <strong id="stepTrap"></strong>.</li>
+      <li>Everyone rolls a <strong id="stepSave"></strong> save. Their reaction decides advantage or disadvantage (see below).</li>
+    </ol>
+
+    <h3>Reaction effects for this trap</h3>
+    <table>
+      <thead><tr><th>Reaction</th><th>Risk (per source)</th><th>Saving throw</th></tr></thead>
+      <tbody id="reactionTable"></tbody>
+    </table>
+
+    <h3>Consequences of failing</h3>
+    <p>A failed save means the character takes <strong id="failDamage"></strong> damage.</p>
+    <div class="condition">
+      <strong>Fail by 5 or more:</strong> the character also suffers <strong id="condName"></strong><span id="condEffect"></span>.
+      <br>This lasts until they finish a Long Rest, or until it is corrected by other means, such as a <em>Lesser Restoration</em> spell, a successful Wisdom (Medicine) check, or simply cutting an ally out of a net.
+      <span id="condRules"></span>
+    </div>
+
+    <h3>Not specified by the source</h3>
+    <div class="gaps">
+      The Simple Trap System does not give these. Set them yourself before rolling:
+      <ul>
+        <li>Saving throw DC</li>
+        <li>Amount of damage (dice)</li>
+        <li>What happens on a successful save (no damage, half damage, etc.)</li>
+        <li>DC for the Wisdom (Medicine) check that corrects a condition</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Trap Table (1d8)</h2>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Roll</th><th>Trap</th><th>Save</th><th>Damage Type</th><th>Good</th><th>Bad</th><th>Condition (Fail by 5+)</th></tr></thead>
+      <tbody id="fullTable"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>How It Works</h2>
+    <p><strong>The "Click" rule.</strong> When the characters encounter a trap, the DM declares "CLICK!" Going around the table, the players say how their character reacts. That decision confers a bonus or penalty on the saving throw.</p>
+    <p><strong>Reactions.</strong> Brace, Jump, or Prone. Riskier choices give a greater chance of advantage with an equal risk of disadvantage. Prone is the riskiest option, Jump is the median, and Brace is the safest.</p>
+    <p><strong>Saves.</strong> A good reaction for the trap gives advantage. A bad reaction gives disadvantage. Any other reaction rolls normally. A "-" in the table means no reaction is good (or bad) for that trap.</p>
+    <p><strong>Lasting conditions.</strong> Failing the save by 5 or more adds a condition that lasts until a Long Rest or until corrected.</p>
+  </div>
+
+  <footer>
+    Based on <strong>ThinkDM's Simple Trap System</strong> by ThinkDM, a free homebrew supplement. This page reproduces only the game mechanics for table use. Restrained and Poisoned are standard conditions; see the 2024 Player's Handbook rules glossary for their effects.
+  </footer>
+</div>
+
+<script>
+const TRAPS = [
+  { roll: 1, name: "Darts",          save: "DEX", saveFull: "Dexterity",    dmg: "Piercing",    good: "Prone", bad: "Jump",  cond: "Puncture Wound", effect: "-1 Constitution" },
+  { roll: 2, name: "Pit",            save: "DEX", saveFull: "Dexterity",    dmg: "Bludgeoning", good: "Jump",  bad: "Prone", cond: "Twisted Ankle",  effect: "-5 Speed" },
+  { roll: 3, name: "Snare",          save: "STR", saveFull: "Strength",     dmg: "Slashing",    good: "Jump",  bad: "Prone", cond: "Restrained",     effect: "", standard: true },
+  { roll: 4, name: "Spikes",         save: "DEX", saveFull: "Dexterity",    dmg: "Piercing",    good: null,    bad: "Prone", cond: "Hamstrung",      effect: "-5 Speed" },
+  { roll: 5, name: "Falling Debris", save: "STR", saveFull: "Strength",     dmg: "Bludgeoning", good: "Brace", bad: "Prone", cond: "Concussed",      effect: "-1 Intelligence" },
+  { roll: 6, name: "Swinging Ram",   save: "DEX", saveFull: "Dexterity",    dmg: "Bludgeoning", good: "Prone", bad: "Jump",  cond: "Winded",         effect: "-1 Constitution" },
+  { roll: 7, name: "Poison",         save: "CON", saveFull: "Constitution", dmg: "Poison",      good: "Prone", bad: null,    cond: "Poisoned",       effect: "", standard: true },
+  { roll: 8, name: "Flame",          save: "DEX", saveFull: "Dexterity",    dmg: "Fire",        good: "Prone", bad: "Brace", cond: "Burned",         effect: "-1 Armor Class" }
+];
+const REACTIONS = [
+  { name: "Brace", risk: "Safest" },
+  { name: "Jump",  risk: "Median" },
+  { name: "Prone", risk: "Riskiest" }
+];
+
+let current = null;
+const $ = id => document.getElementById(id);
+
+function outcome(trap, reaction) {
+  if (!reaction) return { text: "Choose a reaction", cls: "norm" };
+  if (trap.good === reaction) return { text: "Advantage", cls: "adv" };
+  if (trap.bad === reaction)  return { text: "Disadvantage", cls: "dis" };
+  return { text: "Normal roll", cls: "norm" };
+}
+
+function show(trap, rolled) {
+  current = trap;
+  $("result").classList.remove("hidden");
+  $("trapName").textContent = trap.name;
+  $("rollTag").textContent = rolled ? `Rolled ${trap.roll} on 1d8` : `Chosen: ${trap.roll}`;
+  $("trapSave").textContent = `${trap.saveFull} (${trap.save})`;
+  $("trapDamage").textContent = trap.dmg;
+  $("trapGood").textContent = trap.good || "None";
+  $("trapBad").textContent = trap.bad || "None";
+  $("stepTrap").textContent = trap.name;
+  $("stepSave").textContent = trap.saveFull;
+  $("failDamage").textContent = trap.dmg.toLowerCase();
+  $("condName").textContent = trap.cond;
+  $("condEffect").textContent = trap.effect ? ` (${trap.effect})` : "";
+  $("condRules").innerHTML = trap.standard
+    ? `<br><span class="note">${trap.cond} is a standard condition; use the 2024 rules glossary for its effects.</span>` : "";
+
+  $("reactionTable").innerHTML = REACTIONS.map(r => {
+    const o = outcome(trap, r.name);
+    return `<tr><td><strong>${r.name}</strong></td><td>${r.risk}</td><td class="${o.cls}">${o.text}</td></tr>`;
+  }).join("");
+
+  document.querySelectorAll("#fullTable tr").forEach(tr =>
+    tr.classList.toggle("highlight", Number(tr.dataset.roll) === trap.roll));
+  $("pick").value = "";
+}
+
+function rollTrap() {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  const idx = arr[0] % 8;
+  show(TRAPS[idx], true);
+  $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+// Build static table and picker
+$("fullTable").innerHTML = TRAPS.map(t => `
+  <tr data-roll="${t.roll}">
+    <td>${t.roll}</td><td>${t.name}</td><td>${t.save}</td><td>${t.dmg}</td>
+    <td>${t.good || "-"}</td><td>${t.bad || "-"}</td>
+    <td>${t.cond}${t.effect ? "<br>" + t.effect : ""}</td>
+  </tr>`).join("");
+TRAPS.forEach(t => {
+  const o = document.createElement("option");
+  o.value = t.roll; o.textContent = `${t.roll}. ${t.name}`;
+  $("pick").appendChild(o);
+});
+
+$("clickBtn").addEventListener("click", rollTrap);
+$("pick").addEventListener("change", e => { if (e.target.value) show(TRAPS[e.target.value - 1], false); });
+</script>
+</body>
+</html>
